@@ -1,0 +1,2 @@
+class AdNotFoundError(Exception):
+    pass

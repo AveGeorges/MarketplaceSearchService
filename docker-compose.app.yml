@@ -1,0 +1,66 @@
+services:
+  search-postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: search_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d search_db"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      - marketplace
+
+  search-migrate:
+    build:
+      context: .
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@search-postgres:5432/search_db
+    depends_on:
+      search-postgres:
+        condition: service_healthy
+    networks:
+      - marketplace
+
+  search-service:
+    build:
+      context: .
+    command: ["uv", "run", "python", "-m", "bin.api"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@search-postgres:5432/search_db
+    depends_on:
+      search-postgres:
+        condition: service_healthy
+      search-migrate:
+        condition: service_completed_successfully
+    networks:
+      - marketplace
+
+  search-consumer:
+    build:
+      context: .
+    command: ["uv", "run", "python", "-m", "bin.consumer"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@search-postgres:5432/search_db
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      AD_SERVICE_URL: http://ad-service:8002
+    depends_on:
+      search-postgres:
+        condition: service_healthy
+      search-migrate:
+        condition: service_completed_successfully
+    networks:
+      - marketplace
+
+networks:
+  marketplace:
+    name: marketplace
+    external: true
+
+volumes:
+  pgdata:
