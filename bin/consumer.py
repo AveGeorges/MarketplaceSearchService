@@ -19,8 +19,17 @@ from src.settings import Settings
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     settings = Settings()
     engine = create_engine(settings)
+    logger.info("=" * 50)
+    logger.info("SETTINGS DEBUG:")
+    logger.info(f"KAFKA_BROKERS: {settings.kafka_brokers}")
+    logger.info(f"KAFKA_TOPIC_ADS: {settings.kafka_topic_ads}")
+    logger.info(f"KAFKA_CONSUMER_GROUP: {settings.kafka_consumer_group}")
+    logger.info(f"AD_SERVICE_URL: {settings.ad_service_url}")
+    logger.info(f"POSTGRES_HOST: {settings.postgres_host}")
+    logger.info("=" * 50)
     session_factory = create_session_factory(engine)
 
     consumer = AIOKafkaConsumer(
